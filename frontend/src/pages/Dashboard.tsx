@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, DashboardStats, RadarItem, ActionItem } from '../api'
-import { Spinner, EmptyState, StatusBadge, AiBadge, toastError } from '../components/shared'
+import { Spinner, EmptyState, StatusBadge, AiBadge, LoadingButton, toastError, toast } from '../components/shared'
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -15,8 +15,11 @@ export default function Dashboard() {
   const [myOwner, setMyOwner] = useState('')
   const [myItems, setMyItems] = useState<ActionItem[]>([])
   const [nudgeItem, setNudgeItem] = useState<RadarItem | null>(null)
+  const [seeding, setSeeding] = useState(false)
 
-  useEffect(() => {
+  function refreshAll() {
+    setLoading(true)
+    setRadarLoading(true)
     Promise.all([api.getDashboard(), api.getOverdue()])
       .then(([s, o]) => {
         setStats(s)
@@ -29,6 +32,10 @@ export default function Dashboard() {
       .then(setRadar)
       .catch(() => api.getRadar(false).then(setRadar).catch(toastError))
       .finally(() => setRadarLoading(false))
+  }
+
+  useEffect(() => {
+    refreshAll()
   }, [])
 
   function fetchMyItems() {
@@ -47,6 +54,35 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+
+      {stats && stats.total_meetings === 0 && (
+        <div className="card bg-blue-50 border-blue-200 text-center py-8 space-y-3">
+          <div className="text-4xl">🚀</div>
+          <h2 className="text-xl font-bold text-blue-900">Welcome to Context Handoff AI</h2>
+          <p className="text-sm text-blue-700 max-w-lg mx-auto">
+            Your database is currently empty. Click below to load pre-configured Atlas team sample data (5 meetings, 13 action items across all statuses, 7 knowledge base docs, and risk scores).
+          </p>
+          <div className="pt-2">
+            <LoadingButton
+              loading={seeding}
+              onClick={async () => {
+                setSeeding(true)
+                try {
+                  await api.seedDatabase()
+                  toast({ type: 'success', message: 'Sample team data loaded successfully!' })
+                  refreshAll()
+                } catch (e) {
+                  toastError(e)
+                } finally {
+                  setSeeding(false)
+                }
+              }}
+            >
+              ✦ Load Sample Team Data
+            </LoadingButton>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       {stats && (

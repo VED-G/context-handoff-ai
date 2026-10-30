@@ -13,6 +13,7 @@ export default function MeetingsList() {
   const [statusFilter, setStatusFilter] = useState('')
   const [showNew, setShowNew] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [seeding, setSeeding] = useState(false)
   const [newForm, setNewForm] = useState({ type: 'meeting', title: '', agenda: '', scheduled_at: '' })
   const navigate = useNavigate()
 
@@ -75,7 +76,35 @@ export default function MeetingsList() {
 
       {/* List */}
       {loading ? <Spinner /> : meetings.length === 0 ? (
-        <EmptyState icon="📅" title="No meetings found" description="Create your first meeting using the button above" />
+        <div className="card text-center py-10 space-y-4">
+          <div className="text-4xl">📅</div>
+          <h3 className="text-lg font-semibold text-gray-700">No meetings found</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto">
+            You can create your first meeting or load pre-populated sample team data (5 meetings, 13 action items, knowledge base documents, and open-loop radar items).
+          </p>
+          <div className="flex justify-center gap-3">
+            <button onClick={() => setShowNew(true)} className="btn-secondary">
+              + Create Meeting
+            </button>
+            <LoadingButton
+              loading={seeding}
+              onClick={async () => {
+                setSeeding(true)
+                try {
+                  await api.seedDatabase()
+                  toast({ type: 'success', message: 'Sample team data loaded!' })
+                  fetchMeetings()
+                } catch (e) {
+                  toastError(e)
+                } finally {
+                  setSeeding(false)
+                }
+              }}
+            >
+              ✦ Load Sample Team Data
+            </LoadingButton>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
           {meetings.map(m => (

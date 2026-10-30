@@ -31,6 +31,7 @@ def app_and_client():
     _config_module.get_settings.cache_clear()
     os.environ["DATABASE_URL"] = TEST_DB_URL
     os.environ["LOG_FILE"] = "logs/test.log"
+    os.environ["TESTING"] = "true"
     os.environ.setdefault("GROQ_API_KEY", "")
     os.environ.setdefault("GEMINI_API_KEY", "")
 

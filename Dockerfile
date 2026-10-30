@@ -41,5 +41,5 @@ RUN mkdir -p logs
 EXPOSE 8000
 
 # Run with uvicorn; $PORT is set by Render (default 8000 locally)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "python -m seed.seed_data; uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 

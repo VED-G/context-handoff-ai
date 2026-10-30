@@ -341,5 +341,8 @@ export const api = {
   getRadar: (useAi = true) => request<RadarItem[]>(`/radar?use_ai=${useAi}`),
   getAutoAgenda: (meetingId: number) =>
     request<{ agenda_items: unknown[]; generated_by: string }>(`/meetings/${meetingId}/auto-agenda`),
+
+  // Seed
+  seedDatabase: () => request<{ status: string; message: string }>('/seed', { method: 'POST' }),
 }
 

@@ -30,10 +30,27 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create all DB tables on startup."""
+    """Create all DB tables on startup and seed if empty."""
+    import os
     logger.info("startup: creating database tables")
     Base.metadata.create_all(bind=engine)
     logger.info("startup: tables ready")
+
+    # Auto-seed if running in deployment or local dev (not in tests)
+    if os.getenv("TESTING") != "true":
+        try:
+            from app.database import SessionLocal
+            from app.models import Meeting
+            db = SessionLocal()
+            if db.query(Meeting).count() == 0:
+                logger.info("startup: database is empty, auto-seeding sample Atlas Platform data")
+                from seed.seed_data import seed
+                seed()
+                logger.info("startup: auto-seed complete")
+            db.close()
+        except Exception as e:
+            logger.warning(f"startup: auto-seed check skipped or failed: {e}")
+
     yield
     logger.info("shutdown: application stopping")
 
@@ -176,6 +193,19 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 def health_check():
     """Simple health probe – no secrets, no DB call needed."""
     return {"status": "ok", "service": "context-handoff-ai"}
+
+
+@app.post("/api/seed", tags=["seed"])
+def trigger_seed():
+    """Seed the database with sample data if empty or re-seed."""
+    from seed.seed_data import seed
+    from app.database import SessionLocal
+    from app.models import Meeting
+    seed()
+    db = SessionLocal()
+    count = db.query(Meeting).count()
+    db.close()
+    return {"status": "ok", "message": f"Database seeded successfully. Total meetings: {count}"}
 
 
 # ─── API Routers ──────────────────────────────────────────────────────────────
