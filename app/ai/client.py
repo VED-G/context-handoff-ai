@@ -172,10 +172,12 @@ def call_ai(
     input_len = sum(len(m.get("content", "")) for m in messages)
 
     # ── Attempt 1: Groq ───────────────────────────────────────────────────
+    groq_err2: Exception = RuntimeError("groq_not_attempted")  # sentinel
     try:
         result = _call_groq(messages, task)
         return result, "ai"
     except Exception as groq_err1:
+        groq_err2 = groq_err1  # capture for later logging even if retry skipped
         logger.warning(f"Groq attempt 1 failed for {task}: {type(groq_err1).__name__}")
 
     # ── Retry: Groq ────────────────────────────────────────────────────────
@@ -183,7 +185,8 @@ def call_ai(
         result = _call_groq(messages, task)
         _log_ai_call(task, "groq", settings.groq_model, 0, "retry", input_len)
         return result, "ai"
-    except Exception as groq_err2:
+    except Exception as _groq_retry_err:
+        groq_err2 = _groq_retry_err  # final groq error
         logger.warning(f"Groq retry failed for {task}, failing over to Gemini")
 
     # ── Failover: Gemini ──────────────────────────────────────────────────

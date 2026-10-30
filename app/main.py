@@ -148,6 +148,16 @@ async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     req_id = request_id_var.get("") or "-"
+    # Convert errors to plain serializable dicts (Pydantic v2 errors may contain
+    # non-JSON-serializable objects such as PydanticCustomError instances).
+    safe_details = [
+        {
+            "loc": list(e.get("loc", [])),
+            "msg": str(e.get("msg", "")),
+            "type": str(e.get("type", "")),
+        }
+        for e in exc.errors()
+    ]
     return JSONResponse(
         status_code=422,
         content={
@@ -155,7 +165,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
                 "code": "VALIDATION_ERROR",
                 "message": "Request validation failed",
                 "request_id": req_id,
-                "details": exc.errors(),
+                "details": safe_details,
             }
         },
     )
