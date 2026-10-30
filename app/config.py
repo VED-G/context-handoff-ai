@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     # AI Providers
     groq_api_key: str = ""
     gemini_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
-    gemini_model: str = "gemini-2.0-flash"
+    groq_model: str = "qwen/qwen3.8-27b"
+    gemini_model: str = "gemini-3.8-flash"
 
     # AI behavior
     ai_timeout_seconds: int = 20

@@ -35,7 +35,7 @@ def seed():
     try:
         # ── Idempotency guard ──────────────────────────────────────────────
         if db.query(Meeting).count() > 0:
-            print("Database already seeded – skipping.")
+            print("Database already seeded - skipping.")
             return
 
         print("Seeding database...")
@@ -528,18 +528,18 @@ Neha will be back Dec 1. Emergency contact via WhatsApp only.""",
         db.add_all(links)
 
         db.commit()
-        print("✓ Seed data committed successfully!")
-        print(f"\nSummary:")
-        print(f"  - 5 meetings (4 team syncs + 1 work handover)")
-        print(f"  - 13 action items (mix of open/done/dropped/overdue/carried/vague)")
-        print(f"  - 6 KB documents (runbook, arch notes, release checklist, etc.)")
-        print(f"  - 4 KB links (confirmed)")
-        print(f"\nDemo highlights:")
-        print(f"  - Meeting {m2.id} has Neha as 'missed' – brief for her shows what she missed")
-        print(f"  - Items {i4.id}, {i5.id}, {i10.id} are vague/ownerless – perfect for Radar demo")
-        print(f"  - Items {i3.id}, {i5.id} are overdue – show up in overdue panel")
-        print(f"  - Item {i5.id} was carried forward – shows carry history")
-        print(f"  - Meeting {m1.id} raw_notes is messy – great for AI recap demo")
+        print("[OK] Seed data committed successfully!")
+        print("\nSummary:")
+        print("  - 5 meetings (4 team syncs + 1 work handover)")
+        print("  - 13 action items (mix of open/done/dropped/overdue/carried/vague)")
+        print("  - 6 KB documents (runbook, arch notes, release checklist, etc.)")
+        print("  - 4 KB links (confirmed)")
+        print("\nDemo highlights:")
+        print(f"  - Meeting {m2.id} has Neha as 'missed' - brief for her shows what she missed")
+        print(f"  - Items {i4.id}, {i5.id}, {i10.id} are vague/ownerless - perfect for Radar demo")
+        print(f"  - Items {i3.id}, {i5.id} are overdue - show up in overdue panel")
+        print(f"  - Item {i5.id} was carried forward - shows carry history")
+        print(f"  - Meeting {m1.id} raw_notes is messy - great for AI recap demo")
 
     except Exception as e:
         db.rollback()
