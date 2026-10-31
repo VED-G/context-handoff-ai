@@ -11,6 +11,7 @@ or set DATABASE_URL env var for production seeding.
 """
 import sys
 import os
+import time
 from datetime import datetime, timezone, timedelta
 
 # Ensure app is importable
@@ -22,7 +23,18 @@ from app.models import (
     KBDocument, KBLink, Brief
 )
 
-Base.metadata.create_all(bind=engine)
+def init_tables_with_retry(max_retries: int = 4, delay_seconds: float = 2.5):
+    """Create tables with retries to handle serverless Postgres (Neon) cold start."""
+    for attempt in range(1, max_retries + 1):
+        try:
+            Base.metadata.create_all(bind=engine)
+            return
+        except Exception as e:
+            if attempt < max_retries:
+                print(f"Connection attempt {attempt} waiting for DB compute to wake up, retrying in {delay_seconds}s...")
+                time.sleep(delay_seconds)
+            else:
+                raise
 
 def ts(days_offset: int, hour: int = 10) -> datetime:
     """Return a timezone-aware datetime N days from 'today' (negative = past)."""
@@ -31,6 +43,7 @@ def ts(days_offset: int, hour: int = 10) -> datetime:
 
 
 def seed():
+    init_tables_with_retry()
     db = SessionLocal()
     try:
         # ── Idempotency guard ──────────────────────────────────────────────

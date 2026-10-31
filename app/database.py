@@ -34,7 +34,15 @@ db_url = _normalise_db_url(settings.database_url)
 # SQLite needs check_same_thread=False for FastAPI's thread pool
 connect_args = {"check_same_thread": False} if "sqlite" in db_url else {}
 
-engine = create_engine(db_url, connect_args=connect_args, echo=False)
+# pool_pre_ping=True and pool_recycle=300 handle Neon/serverless Postgres
+# auto-suspend / scale-to-zero without dropping connections
+engine = create_engine(
+    db_url,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    echo=False,
+)
 
 # Enable WAL mode for SQLite to reduce locking under concurrent reads
 if "sqlite" in db_url:
