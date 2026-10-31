@@ -1,55 +1,74 @@
 /**
- * Shared reusable components for context-handoff-ai frontend.
+ * Shared reusable UI components for context-handoff-ai frontend.
  */
 
 import React, { useEffect, useState } from 'react'
 import { ApiException } from '../api'
 
 // ─── StatusBadge ──────────────────────────────────────────────────────────────
-const STATUS_COLORS: Record<string, string> = {
+interface StatusStyle {
+  bg: string
+  text: string
+  border: string
+  dot: string
+}
+
+const STATUS_CONFIG: Record<string, StatusStyle> = {
   // Meeting statuses
-  draft: 'bg-gray-100 text-gray-700',
-  scheduled: 'bg-blue-100 text-blue-700',
-  held: 'bg-purple-100 text-purple-700',
-  closed: 'bg-green-100 text-green-700',
+  draft: { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', dot: 'bg-slate-400' },
+  scheduled: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', dot: 'bg-sky-500' },
+  held: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', dot: 'bg-violet-500' },
+  closed: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
   // Item statuses
-  open: 'bg-yellow-100 text-yellow-700',
-  in_progress: 'bg-blue-100 text-blue-700',
-  done: 'bg-green-100 text-green-700',
-  dropped: 'bg-red-100 text-red-700',
+  open: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
+  in_progress: { bg: 'bg-brand-50', text: 'text-brand-700', border: 'border-brand-200', dot: 'bg-brand-500' },
+  done: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+  dropped: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', dot: 'bg-rose-400' },
   // Attendance
-  invited: 'bg-gray-100 text-gray-600',
-  attended: 'bg-green-100 text-green-700',
-  missed: 'bg-red-100 text-red-700',
-  no_response: 'bg-orange-100 text-orange-700',
+  invited: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', dot: 'bg-slate-400' },
+  attended: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+  missed: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', dot: 'bg-rose-500' },
+  no_response: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-400' },
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const color = STATUS_COLORS[status] || 'bg-gray-100 text-gray-600'
+  const config = STATUS_CONFIG[status] || {
+    bg: 'bg-slate-50',
+    text: 'text-slate-600',
+    border: 'border-slate-200',
+    dot: 'bg-slate-400',
+  }
   return (
-    <span className={`badge ${color}`}>
-      {status.replace('_', ' ')}
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${config.bg} ${config.text} ${config.border} shadow-2xs`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+      <span>{status.replace('_', ' ')}</span>
     </span>
   )
 }
 
 // ─── AiBadge ──────────────────────────────────────────────────────────────────
-export function AiBadge({ mode }: { mode: 'ai' | 'fallback' | string }) {
+export function AiBadge({ mode = 'ai' }: { mode?: 'ai' | 'fallback' | string }) {
   if (mode === 'ai') {
     return (
-      <span className="badge bg-violet-100 text-violet-700 gap-1">
-        ✦ AI
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200/80 text-violet-700 shadow-2xs">
+        <span className="text-[10px] text-violet-500">✦</span>
+        <span>AI Generated</span>
       </span>
     )
   }
   return (
-    <span className="badge bg-amber-100 text-amber-700" title="AI unavailable – using rule-based logic">
-      ⚡ Basic mode
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200"
+      title="Generated via deterministic rule-based fallback"
+    >
+      <span>⚡ Heuristic mode</span>
     </span>
   )
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
+// ─── Toast System ─────────────────────────────────────────────────────────────
 export interface ToastMessage {
   id: number
   type: 'success' | 'error' | 'info'
@@ -87,7 +106,7 @@ export function ToastContainer() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
   useEffect(() => {
-    setGlobalToast((msg) => {
+    setGlobalToast(msg => {
       const id = ++_toastId
       setToasts(prev => [...prev, { ...msg, id }])
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000)
@@ -97,19 +116,35 @@ export function ToastContainer() {
   if (!toasts.length) return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
       {toasts.map(t => (
         <div
           key={t.id}
-          className={`rounded-lg shadow-lg p-4 text-white ${
-            t.type === 'error' ? 'bg-red-600' :
-            t.type === 'success' ? 'bg-green-600' : 'bg-blue-600'
+          className={`pointer-events-auto rounded-xl p-4 shadow-xl border backdrop-blur-md animate-fade-in-up flex items-start gap-3 ${
+            t.type === 'error'
+              ? 'bg-rose-900/90 border-rose-700 text-rose-50 shadow-rose-900/20'
+              : t.type === 'success'
+              ? 'bg-slate-900/90 border-emerald-600/60 text-white shadow-emerald-950/20'
+              : 'bg-slate-900/90 border-slate-700 text-white'
           }`}
         >
-          <p className="text-sm font-medium">{t.message}</p>
-          {t.request_id && (
-            <p className="text-xs mt-1 opacity-75">Request ID: {t.request_id}</p>
-          )}
+          <span className="text-base mt-0.5">
+            {t.type === 'error' ? '⚠️' : t.type === 'success' ? '✓' : 'ℹ️'}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium leading-snug">{t.message}</p>
+            {t.request_id && (
+              <p className="text-[11px] mt-1 font-mono text-slate-400 truncate">
+                Req ID: {t.request_id}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => setToasts(prev => prev.filter(item => item.id !== t.id))}
+            className="text-slate-400 hover:text-white transition-colors text-xs"
+          >
+            ✕
+          </button>
         </div>
       ))}
     </div>
@@ -130,7 +165,7 @@ export function LoadingButton({
       {...props}
     >
       {loading && (
-        <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 align-middle" />
+        <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
       )}
       {children}
     </button>
@@ -138,25 +173,40 @@ export function LoadingButton({
 }
 
 // ─── EmptyState ───────────────────────────────────────────────────────────────
-export function EmptyState({ icon = '📭', title, description }: {
+export function EmptyState({
+  icon = '📭',
+  title,
+  description,
+  action,
+}: {
   icon?: string
   title: string
   description?: string
+  action?: React.ReactNode
 }) {
   return (
-    <div className="text-center py-12 text-gray-400">
+    <div className="card text-center py-12 px-4 border-dashed border-slate-300/80 bg-slate-50/50">
       <div className="text-4xl mb-3">{icon}</div>
-      <p className="font-medium text-gray-500">{title}</p>
-      {description && <p className="text-sm mt-1">{description}</p>}
+      <h3 className="font-semibold text-slate-700 text-base">{title}</h3>
+      {description && (
+        <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
+          {description}
+        </p>
+      )}
+      {action && <div className="mt-2">{action}</div>}
     </div>
   )
 }
 
-// ─── Loading spinner ──────────────────────────────────────────────────────────
+// ─── Loading Spinner ──────────────────────────────────────────────────────────
 export function Spinner() {
   return (
-    <div className="flex items-center justify-center py-10">
-      <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+    <div className="flex flex-col items-center justify-center py-12 gap-3">
+      <div className="relative w-9 h-9">
+        <div className="absolute inset-0 rounded-full border-3 border-brand-200 opacity-60"></div>
+        <div className="absolute inset-0 rounded-full border-3 border-brand-600 border-t-transparent animate-spin"></div>
+      </div>
+      <span className="text-xs font-medium text-slate-400">Loading details...</span>
     </div>
   )
 }
@@ -177,42 +227,63 @@ export function HistoryDrawer({
   onClose: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-40 flex justify-end" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-xs animate-fade-in" onClick={onClose}>
       <div
-        className="bg-white w-80 h-full shadow-xl overflow-y-auto p-6"
+        className="bg-white w-full max-w-md h-full shadow-2xl overflow-y-auto p-6 border-l border-slate-200 animate-fade-in-up"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-800">Item History</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div>
+            <h3 className="font-bold text-slate-800 text-base">Item Audit Trail</h3>
+            <p className="text-xs text-slate-400">Immutable lifecycle events</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            ✕
+          </button>
         </div>
-        {events.length === 0 ? (
-          <EmptyState icon="📜" title="No history yet" />
-        ) : (
-          <ol className="relative border-l border-gray-200 space-y-4 ml-2">
-            {events.map(ev => (
-              <li key={ev.id} className="ml-4">
-                <div className="absolute -left-1.5 mt-1.5 w-3 h-3 rounded-full bg-blue-400 border-2 border-white" />
-                <p className="text-xs text-gray-500">
-                  {new Date(ev.created_at).toLocaleString()}
-                  {ev.actor && ` · ${ev.actor}`}
-                </p>
-                <p className="text-sm font-medium capitalize">{ev.event_type.replace('_', ' ')}</p>
-                {ev.old_value && (
-                  <p className="text-xs text-gray-400">
-                    {ev.old_value} → {ev.new_value}
+
+        <div className="mt-6">
+          {events.length === 0 ? (
+            <EmptyState icon="📜" title="No history recorded yet" />
+          ) : (
+            <ol className="relative border-l-2 border-slate-200 space-y-6 ml-3">
+              {events.map(ev => (
+                <li key={ev.id} className="ml-5 relative">
+                  <span className="absolute -left-[27px] mt-1.5 w-3.5 h-3.5 rounded-full bg-brand-500 border-3 border-white shadow-xs" />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wide text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200/50">
+                      {ev.event_type.replace('_', ' ')}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      {new Date(ev.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Actor: <span className="font-medium text-slate-700">{ev.actor || 'System'}</span>
                   </p>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
+                  {(ev.old_value || ev.new_value) && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-600">
+                      {ev.old_value && <span className="line-through text-slate-400 mr-2">{ev.old_value}</span>}
+                      <span className="font-semibold text-slate-800">→ {ev.new_value}</span>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {new Date(ev.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-// ─── Confirm modal ────────────────────────────────────────────────────────────
+// ─── ConfirmModal ─────────────────────────────────────────────────────────────
 export function ConfirmModal({
   title,
   message,
@@ -225,16 +296,19 @@ export function ConfirmModal({
   onCancel: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-        <h3 className="font-semibold text-gray-800 mb-2">{title}</h3>
-        <p className="text-gray-600 text-sm mb-6">{message}</p>
-        <div className="flex gap-3 justify-end">
-          <button onClick={onCancel} className="btn-secondary">Cancel</button>
-          <button onClick={onConfirm} className="btn-danger">Confirm</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-slate-200 animate-fade-in-up">
+        <h3 className="font-bold text-slate-800 text-base mb-2">{title}</h3>
+        <p className="text-slate-600 text-sm mb-6 leading-relaxed">{message}</p>
+        <div className="flex gap-2.5 justify-end">
+          <button onClick={onCancel} className="btn-secondary">
+            Cancel
+          </button>
+          <button onClick={onConfirm} className="btn-danger">
+            Confirm
+          </button>
         </div>
       </div>
     </div>
   )
 }
-

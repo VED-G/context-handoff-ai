@@ -29,6 +29,7 @@ export default function MeetingDetail() {
   const [briefText, setBriefText] = useState('')
   const [briefMode, setBriefMode] = useState('')
   const [briefLoading, setBriefLoading] = useState(false)
+  const [copiedBrief, setCopiedBrief] = useState(false)
 
   // Carry-forward state
   const [carryLoading, setCarryLoading] = useState(false)
@@ -63,23 +64,28 @@ export default function MeetingDetail() {
   async function handleStatusChange(status: string) {
     try {
       await api.changeMeetingStatus(meetingId, status)
-      toast({ type: 'success', message: `Status changed to ${status}` })
+      toast({ type: 'success', message: `Status updated to ${status}` })
       reload()
-    } catch (e) { toastError(e) }
+    } catch (e) {
+      toastError(e)
+    }
   }
 
   async function handleGenerateRecap() {
     if (!meeting?.raw_notes?.trim()) {
-      toast({ type: 'error', message: 'Paste some raw notes first' })
+      toast({ type: 'error', message: 'Paste some raw notes first under the Notes tab' })
       return
     }
     setRecapLoading(true)
     try {
       const proposal = await api.generateRecap(meetingId)
       setRecapProposal(proposal)
-      toast({ type: 'success', message: 'Recap generated! Review and save.' })
-    } catch (e) { toastError(e) }
-    finally { setRecapLoading(false) }
+      toast({ type: 'success', message: 'Recap generated! Review proposal below.' })
+    } catch (e) {
+      toastError(e)
+    } finally {
+      setRecapLoading(false)
+    }
   }
 
   async function handleApplyRecap() {
@@ -87,22 +93,31 @@ export default function MeetingDetail() {
     setApplyLoading(true)
     try {
       await api.applyRecap(meetingId, recapProposal)
-      toast({ type: 'success', message: 'Recap saved!' })
+      toast({ type: 'success', message: 'Recap applied to meeting!' })
       setRecapProposal(null)
       reload()
-    } catch (e) { toastError(e) }
-    finally { setApplyLoading(false) }
+    } catch (e) {
+      toastError(e)
+    } finally {
+      setApplyLoading(false)
+    }
   }
 
   async function handleGetBrief() {
-    if (!briefPerson.trim()) { toast({ type: 'error', message: 'Enter a person name' }); return }
+    if (!briefPerson.trim()) {
+      toast({ type: 'error', message: 'Enter or select a person name' })
+      return
+    }
     setBriefLoading(true)
     try {
       const r = await api.getBrief(meetingId, briefPerson)
       setBriefText(r.brief)
       setBriefMode(r.generated_by)
-    } catch (e) { toastError(e) }
-    finally { setBriefLoading(false) }
+    } catch (e) {
+      toastError(e)
+    } finally {
+      setBriefLoading(false)
+    }
   }
 
   async function handleCarryForward() {
@@ -110,9 +125,12 @@ export default function MeetingDetail() {
     try {
       const r = await api.carryForward(meetingId, {})
       setCarryResult(r)
-      toast({ type: 'success', message: `Carried ${r.carried_count} items to new meeting #${r.next_meeting_id}` })
-    } catch (e) { toastError(e) }
-    finally { setCarryLoading(false) }
+      toast({ type: 'success', message: `Carried ${r.carried_count} open items to new meeting #${r.next_meeting_id}` })
+    } catch (e) {
+      toastError(e)
+    } finally {
+      setCarryLoading(false)
+    }
   }
 
   async function handleAutoAgenda() {
@@ -121,8 +139,11 @@ export default function MeetingDetail() {
       const r = await api.getAutoAgenda(meetingId)
       setAgendaItems(r.agenda_items as any[])
       setAgendaMode(r.generated_by)
-    } catch (e) { toastError(e) }
-    finally { setAgendaLoading(false) }
+    } catch (e) {
+      toastError(e)
+    } finally {
+      setAgendaLoading(false)
+    }
   }
 
   async function addParticipant() {
@@ -132,7 +153,9 @@ export default function MeetingDetail() {
       setNewParticipant({ name: '', email: '', attendance: 'invited' })
       toast({ type: 'success', message: 'Participant added' })
       reload()
-    } catch (e) { toastError(e) }
+    } catch (e) {
+      toastError(e)
+    }
   }
 
   async function addDecision() {
@@ -140,8 +163,11 @@ export default function MeetingDetail() {
     try {
       await api.addDecision(meetingId, newDecision)
       setNewDecision('')
+      toast({ type: 'success', message: 'Decision recorded' })
       reload()
-    } catch (e) { toastError(e) }
+    } catch (e) {
+      toastError(e)
+    }
   }
 
   async function addItem() {
@@ -155,22 +181,24 @@ export default function MeetingDetail() {
         current_meeting_id: meetingId,
       } as any)
       setNewItem({ title: '', description: '', owner: '', due_date: '' })
-      toast({ type: 'success', message: 'Item added' })
+      toast({ type: 'success', message: 'Action item created' })
       reload()
-    } catch (e) { toastError(e) }
+    } catch (e) {
+      toastError(e)
+    }
   }
 
   if (loading) return <Spinner />
   if (!meeting) return <EmptyState icon="❌" title="Meeting not found" />
 
-  const TABS: { key: Tab; label: string }[] = [
-    { key: 'agenda', label: 'Agenda' },
-    { key: 'participants', label: `Participants (${meeting.participants.length})` },
-    { key: 'notes', label: 'Notes & AI Recap' },
-    { key: 'decisions', label: `Decisions (${meeting.decisions.length})` },
-    { key: 'items', label: `Items (${meeting.action_items.length})` },
-    { key: 'brief', label: 'Catchup Brief' },
-    { key: 'carry', label: 'Carry Forward' },
+  const TABS: { key: Tab; label: string; icon: string; count?: number }[] = [
+    { key: 'agenda', label: 'Agenda & Auto-Draft', icon: '📝' },
+    { key: 'notes', label: 'Notes & AI Recap', icon: '✨' },
+    { key: 'decisions', label: 'Decisions', icon: '⚖️', count: meeting.decisions.length },
+    { key: 'items', label: 'Action Items', icon: '✓', count: meeting.action_items.length },
+    { key: 'participants', label: 'Participants', icon: '👥', count: meeting.participants.length },
+    { key: 'brief', label: 'Catchup Brief', icon: '📬' },
+    { key: 'carry', label: 'Carry Forward', icon: '↩' },
   ]
 
   const historyItem = historyItemId !== null
@@ -178,85 +206,133 @@ export default function MeetingDetail() {
     : null
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-6 animate-fade-in">
+      {/* Top Breadcrumb & Status Navigation */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200/70">
         <div>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-            <span className="uppercase font-medium">{meeting.type}</span>
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={() => navigate('/meetings')}
+              className="text-xs font-semibold text-slate-400 hover:text-brand-600 transition-colors flex items-center gap-1"
+            >
+              <span>← All Meetings</span>
+            </button>
+            <span className="text-slate-300">/</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+              {meeting.type}
+            </span>
             <StatusBadge status={meeting.status} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">{meeting.title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            {meeting.title}
+          </h1>
           {meeting.scheduled_at && (
-            <p className="text-sm text-gray-400 mt-0.5">
-              {new Date(meeting.scheduled_at).toLocaleString()}
+            <p className="text-xs text-slate-400 font-mono mt-1">
+              🗓️ {new Date(meeting.scheduled_at).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}
             </p>
           )}
         </div>
-        {/* Status transitions */}
-        <div className="flex gap-2 flex-wrap">
-          {['draft', 'scheduled', 'held', 'closed'].map(s => (
-            s !== meeting.status && (
+
+        {/* Status transition chips */}
+        <div className="flex items-center gap-1.5 self-start md:self-auto bg-slate-100/80 p-1.5 rounded-xl border border-slate-200/80">
+          <span className="text-[11px] font-medium text-slate-400 px-2">Stage:</span>
+          {['draft', 'scheduled', 'held', 'closed'].map(s => {
+            const isCurrent = s === meeting.status
+            return (
               <button
                 key={s}
+                disabled={isCurrent}
                 onClick={() => handleStatusChange(s)}
-                className="btn-secondary text-xs py-1 px-3"
+                className={`text-xs px-2.5 py-1 rounded-lg font-semibold capitalize transition-all ${
+                  isCurrent
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 cursor-default'
+                    : 'text-slate-500 hover:text-brand-600 hover:bg-white/60'
+                }`}
               >
-                → {s}
+                {s}
               </button>
             )
-          ))}
+          })}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-              tab === t.key
-                ? 'border-b-2 border-blue-600 text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* Modern Tabs Bar */}
+      <div className="flex gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 overflow-x-auto shadow-2xs">
+        {TABS.map(t => {
+          const active = tab === t.key
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-150 ${
+                active
+                  ? 'bg-white text-brand-700 shadow-xs border border-slate-200/70'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <span>{t.icon}</span>
+              <span>{t.label}</span>
+              {t.count !== undefined && (
+                <span
+                  className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                    active ? 'bg-brand-50 text-brand-700' : 'bg-slate-200/70 text-slate-600'
+                  }`}
+                >
+                  {t.count}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Tab content */}
-      <div>
-        {/* Agenda */}
+      {/* Tab Contents */}
+      <div className="mt-4">
+        {/* ─── TAB 1: Agenda ─── */}
         {tab === 'agenda' && (
-          <div className="space-y-4">
-            <div>
-              <label className="label">Agenda</label>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="card space-y-4">
+              <div>
+                <h3 className="font-bold text-slate-800 text-base mb-1">Meeting Agenda</h3>
+                <p className="text-xs text-slate-400">Outline objectives and discussion points</p>
+              </div>
               <textarea
-                className="input h-40 resize-none"
+                className="input h-48 font-mono text-xs leading-relaxed resize-none"
                 value={meeting.agenda || ''}
                 onChange={e => api.updateMeeting(meetingId, { agenda: e.target.value }).then(setMeeting)}
-                placeholder="Enter agenda items..."
+                placeholder="1. Review past action items&#10;2. Product updates&#10;3. Key decisions..."
               />
+              <p className="text-[11px] text-slate-400 italic">Changes save automatically on edit</p>
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="label">AI Auto-Agenda</label>
+
+            <div className="card space-y-4 bg-gradient-to-br from-indigo-50/40 via-white to-violet-50/30 border-indigo-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">✦ AI Auto-Agenda</h3>
+                  <p className="text-xs text-slate-500">Auto-drafts a prioritized agenda from carried/overdue tasks</p>
+                </div>
                 <AiBadge mode={agendaMode || 'ai'} />
               </div>
-              <LoadingButton loading={agendaLoading} onClick={handleAutoAgenda}>
-                ✦ Generate Auto-Agenda
+
+              <LoadingButton loading={agendaLoading} onClick={handleAutoAgenda} className="btn-ai text-xs w-full py-2.5">
+                ✦ Synthesize Auto-Agenda
               </LoadingButton>
+
               {agendaItems.length > 0 && (
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-2.5 animate-fade-in-up">
                   {agendaItems.map((item: any) => (
-                    <div key={item.order} className="flex gap-3 p-3 bg-blue-50 rounded-lg">
-                      <span className="text-blue-600 font-bold text-sm">{item.order}.</span>
-                      <div>
-                        <p className="font-medium text-sm">{item.title}</p>
-                        <p className="text-xs text-gray-500">{item.description}</p>
-                        <p className="text-xs text-blue-500 mt-0.5">⏱ {item.time_minutes} min</p>
+                    <div key={item.order} className="flex gap-3 p-3.5 bg-white rounded-xl border border-indigo-100 shadow-2xs">
+                      <span className="w-6 h-6 rounded-lg bg-indigo-50 text-brand-600 font-extrabold text-xs flex items-center justify-center shrink-0">
+                        {item.order}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-bold text-xs text-slate-800 truncate">{item.title}</p>
+                          <span className="text-[10px] font-mono text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full shrink-0">
+                            ⏱ {item.time_minutes} min
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{item.description}</p>
                       </div>
                     </div>
                   ))}
@@ -266,260 +342,195 @@ export default function MeetingDetail() {
           </div>
         )}
 
-        {/* Participants */}
-        {tab === 'participants' && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-2">
-              <input className="input" placeholder="Name *" value={newParticipant.name}
-                onChange={e => setNewParticipant(p => ({ ...p, name: e.target.value }))} />
-              <input className="input" placeholder="Email" value={newParticipant.email}
-                onChange={e => setNewParticipant(p => ({ ...p, email: e.target.value }))} />
-              <select className="input" value={newParticipant.attendance}
-                onChange={e => setNewParticipant(p => ({ ...p, attendance: e.target.value }))}>
-                <option value="invited">Invited</option>
-                <option value="attended">Attended</option>
-                <option value="missed">Missed</option>
-                <option value="no_response">No Response</option>
-              </select>
-            </div>
-            <button onClick={addParticipant} className="btn-primary">+ Add Participant</button>
-
-            <div className="space-y-2">
-              {meeting.participants.map(p => (
-                <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">{p.name}</p>
-                    {p.email && <p className="text-xs text-gray-400">{p.email}</p>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <select
-                      className="text-xs border rounded px-2 py-1"
-                      value={p.attendance}
-                      onChange={e => api.updateParticipant(meetingId, p.id, { attendance: e.target.value as any })
-                        .then(reload).catch(toastError)}
-                    >
-                      <option value="invited">Invited</option>
-                      <option value="attended">Attended</option>
-                      <option value="missed">Missed</option>
-                      <option value="no_response">No Response</option>
-                    </select>
-                    <StatusBadge status={p.attendance} />
-                    <button
-                      onClick={() => api.removeParticipant(meetingId, p.id).then(reload).catch(toastError)}
-                      className="text-red-400 hover:text-red-600 text-sm"
-                    >×</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Notes & AI Recap */}
+        {/* ─── TAB 2: Notes & AI Recap ─── */}
         {tab === 'notes' && (
-          <div className="space-y-4">
-            <div>
-              <label className="label">Raw Notes (paste meeting notes, chat, emails...)</label>
+          <div className="space-y-6">
+            <div className="card space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base">Unstructured Raw Notes</h3>
+                  <p className="text-xs text-slate-400">Paste messy meeting transcript, slack discussions, or quick bullets</p>
+                </div>
+                <LoadingButton loading={recapLoading} onClick={handleGenerateRecap} className="btn-ai text-xs py-2 px-4">
+                  ✦ Generate AI Recap
+                </LoadingButton>
+              </div>
+
               <textarea
-                className="input h-48 resize-y font-mono text-sm"
-                placeholder="Paste raw notes here – the messier the better. AI will structure it."
+                className="input h-52 font-mono text-xs leading-relaxed"
                 value={meeting.raw_notes || ''}
                 onChange={e => api.updateMeeting(meetingId, { raw_notes: e.target.value }).then(setMeeting)}
+                placeholder="Paste your meeting notes here..."
               />
             </div>
 
-            <LoadingButton loading={recapLoading} onClick={handleGenerateRecap}>
-              ✦ Generate AI Recap
-            </LoadingButton>
-
-            {/* Recap Review Panel */}
+            {/* Recap Proposal Canvas (Review before apply) */}
             {recapProposal && (
-              <div className="card border-2 border-blue-200 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-800">Recap Proposal – Review & Edit</h3>
+              <div className="card border-2 border-violet-200 bg-gradient-to-b from-violet-50/30 to-white space-y-5 shadow-lg animate-fade-in-up">
+                <div className="flex items-center justify-between pb-3 border-b border-violet-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✨</span>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-base">AI Recap Proposal (Review & Apply)</h3>
+                      <p className="text-xs text-slate-500">Edit any details before committing to meeting record</p>
+                    </div>
+                  </div>
                   <AiBadge mode={recapProposal.ai_mode} />
                 </div>
 
                 <div>
-                  <label className="label">Summary</label>
+                  <label className="label">Executive Summary</label>
                   <textarea
-                    className="input h-24 resize-none"
+                    className="input h-24 text-xs font-sans leading-relaxed"
                     value={recapProposal.summary}
                     onChange={e => setRecapProposal(p => p ? { ...p, summary: e.target.value } : p)}
                   />
                 </div>
 
                 <div>
-                  <label className="label">Decisions</label>
-                  {recapProposal.decisions.map((d, i) => (
-                    <div key={i} className="flex gap-2 mb-2">
-                      <input
-                        className="input flex-1"
-                        value={d}
-                        onChange={e => {
-                          const ds = [...recapProposal.decisions]
-                          ds[i] = e.target.value
-                          setRecapProposal(p => p ? { ...p, decisions: ds } : p)
-                        }}
-                      />
-                      <button
-                        onClick={() => setRecapProposal(p => p ? {
-                          ...p, decisions: p.decisions.filter((_, j) => j !== i)
-                        } : p)}
-                        className="text-red-400 hover:text-red-600"
-                      >×</button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => setRecapProposal(p => p ? { ...p, decisions: [...p.decisions, ''] } : p)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >+ Add decision</button>
-                </div>
-
-                <div>
-                  <label className="label">Action Items</label>
-                  {recapProposal.action_items.map((item, i) => (
-                    <div key={i} className="p-3 bg-gray-50 rounded-lg mb-2 space-y-2">
-                      <div className="flex gap-2">
+                  <label className="label">Extracted Decisions</label>
+                  <div className="space-y-2">
+                    {recapProposal.decisions.map((d, i) => (
+                      <div key={i} className="flex gap-2">
                         <input
-                          className="input flex-1"
-                          placeholder="Title"
-                          value={item.title}
+                          className="input flex-1 text-xs"
+                          value={d}
                           onChange={e => {
-                            const items = [...recapProposal.action_items]
-                            items[i] = { ...items[i], title: e.target.value }
-                            setRecapProposal(p => p ? { ...p, action_items: items } : p)
+                            const ds = [...recapProposal.decisions]
+                            ds[i] = e.target.value
+                            setRecapProposal(p => p ? { ...p, decisions: ds } : p)
                           }}
                         />
                         <button
                           onClick={() => setRecapProposal(p => p ? {
-                            ...p, action_items: p.action_items.filter((_, j) => j !== i)
+                            ...p, decisions: p.decisions.filter((_, j) => j !== i)
                           } : p)}
-                          className="text-red-400 hover:text-red-600"
-                        >×</button>
+                          className="text-slate-400 hover:text-rose-600 px-2"
+                        >✕</button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          className="input text-sm"
-                          placeholder="Owner"
-                          value={item.owner || ''}
-                          onChange={e => {
-                            const items = [...recapProposal.action_items]
-                            items[i] = { ...items[i], owner: e.target.value }
-                            setRecapProposal(p => p ? { ...p, action_items: items } : p)
-                          }}
-                        />
-                        <input
-                          className="input text-sm"
-                          placeholder="Due date (YYYY-MM-DD)"
-                          value={item.due_date || ''}
-                          onChange={e => {
-                            const items = [...recapProposal.action_items]
-                            items[i] = { ...items[i], due_date: e.target.value }
-                            setRecapProposal(p => p ? { ...p, action_items: items } : p)
-                          }}
-                        />
-                      </div>
-                      {item.needs_owner && (
-                        <p className="text-xs text-amber-600">⚠ Owner needs to be assigned</p>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                    <button
+                      onClick={() => setRecapProposal(p => p ? { ...p, decisions: [...p.decisions, ''] } : p)}
+                      className="text-xs text-brand-600 hover:underline font-semibold"
+                    >+ Add another decision</button>
+                  </div>
                 </div>
 
-                <div className="flex gap-3">
-                  <LoadingButton loading={applyLoading} onClick={handleApplyRecap}>
-                    ✓ Save Recap
+                <div>
+                  <label className="label">Proposed Action Items</label>
+                  <div className="space-y-2.5">
+                    {recapProposal.action_items.map((item, i) => (
+                      <div key={i} className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-2 shadow-2xs">
+                        <div className="flex gap-2">
+                          <input
+                            className="input flex-1 text-xs font-semibold"
+                            placeholder="Action Title"
+                            value={item.title}
+                            onChange={e => {
+                              const items = [...recapProposal.action_items]
+                              items[i] = { ...items[i], title: e.target.value }
+                              setRecapProposal(p => p ? { ...p, action_items: items } : p)
+                            }}
+                          />
+                          <button
+                            onClick={() => setRecapProposal(p => p ? {
+                              ...p, action_items: p.action_items.filter((_, j) => j !== i)
+                            } : p)}
+                            className="text-slate-400 hover:text-rose-600 px-2"
+                          >✕</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            className="input text-xs"
+                            placeholder="Owner name"
+                            value={item.owner || ''}
+                            onChange={e => {
+                              const items = [...recapProposal.action_items]
+                              items[i] = { ...items[i], owner: e.target.value }
+                              setRecapProposal(p => p ? { ...p, action_items: items } : p)
+                            }}
+                          />
+                          <input
+                            className="input text-xs"
+                            placeholder="Due date (YYYY-MM-DD)"
+                            value={item.due_date || ''}
+                            onChange={e => {
+                              const items = [...recapProposal.action_items]
+                              items[i] = { ...items[i], due_date: e.target.value }
+                              setRecapProposal(p => p ? { ...p, action_items: items } : p)
+                            }}
+                          />
+                        </div>
+                        {item.needs_owner && (
+                          <p className="text-[11px] text-amber-600 font-medium">⚠️ Needs valid owner assignment</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-3 border-t border-violet-100">
+                  <LoadingButton loading={applyLoading} onClick={handleApplyRecap} className="text-xs">
+                    ✓ Apply & Save to Meeting
                   </LoadingButton>
-                  <button onClick={() => setRecapProposal(null)} className="btn-secondary">Discard</button>
+                  <button onClick={() => setRecapProposal(null)} className="btn-secondary text-xs">
+                    Discard Proposal
+                  </button>
                 </div>
               </div>
             )}
 
+            {/* Saved Summary Display */}
             {meeting.summary && (
-              <div className="card bg-gray-50">
-                <h3 className="font-medium text-gray-700 mb-2">Saved Summary</h3>
-                <p className="text-sm text-gray-600">{meeting.summary}</p>
+              <div className="card bg-slate-50 border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-slate-800 text-sm">Committed Meeting Summary</h3>
+                  <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold border border-emerald-200">
+                    Active
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed font-sans">{meeting.summary}</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Decisions */}
+        {/* ─── TAB 3: Decisions ─── */}
         {tab === 'decisions' && (
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                className="input flex-1"
-                placeholder="Add a decision..."
-                value={newDecision}
-                onChange={e => setNewDecision(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addDecision()}
-              />
-              <button onClick={addDecision} className="btn-primary">Add</button>
+            <div className="card p-4">
+              <h3 className="font-bold text-slate-800 text-sm mb-2">Record New Decision</h3>
+              <div className="flex gap-2">
+                <input
+                  className="input flex-1 text-xs"
+                  placeholder="e.g. Approved database migration schedule for Q4..."
+                  value={newDecision}
+                  onChange={e => setNewDecision(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addDecision()}
+                />
+                <button onClick={addDecision} className="btn-primary text-xs px-4">
+                  + Record
+                </button>
+              </div>
             </div>
+
             {meeting.decisions.length === 0 ? (
-              <EmptyState icon="📋" title="No decisions recorded" />
+              <EmptyState icon="⚖️" title="No decisions recorded yet" description="Add key agreements above or generate them via AI Recap." />
             ) : (
-              <ol className="space-y-2">
+              <div className="space-y-2.5">
                 {meeting.decisions.map((d, i) => (
-                  <li key={d.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-400 font-mono text-sm">{i + 1}.</span>
-                    <p className="flex-1 text-sm">{d.text}</p>
+                  <div key={d.id} className="card p-4 flex items-start gap-3 hover:border-slate-300">
+                    <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 font-extrabold text-xs flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </span>
+                    <p className="flex-1 text-xs sm:text-sm font-medium text-slate-800 leading-relaxed">{d.text}</p>
                     <button
                       onClick={() => api.deleteDecision(meetingId, d.id).then(reload).catch(toastError)}
-                      className="text-red-400 hover:text-red-600 text-sm"
-                    >×</button>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
-        )}
-
-        {/* Action Items */}
-        {tab === 'items' && (
-          <div className="space-y-4">
-            {/* Quick add form */}
-            <div className="card bg-blue-50 border-blue-200 space-y-2">
-              <h3 className="text-sm font-medium text-blue-800">Add Action Item</h3>
-              <input className="input" placeholder="Title *" value={newItem.title}
-                onChange={e => setNewItem(i => ({ ...i, title: e.target.value }))} />
-              <div className="grid grid-cols-2 gap-2">
-                <input className="input" placeholder="Owner"
-                  value={newItem.owner}
-                  onChange={e => setNewItem(i => ({ ...i, owner: e.target.value }))} />
-                <input className="input" type="date" value={newItem.due_date}
-                  onChange={e => setNewItem(i => ({ ...i, due_date: e.target.value }))} />
-              </div>
-              <button onClick={addItem} className="btn-primary w-full">+ Add Item</button>
-            </div>
-
-            {/* Items list */}
-            {meeting.action_items.length === 0 ? (
-              <EmptyState icon="✅" title="No action items" description="Add items above or generate via AI Recap" />
-            ) : (
-              <div className="space-y-2">
-                {meeting.action_items.map(item => (
-                  <div key={item.id} className="card p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={item.status} />
-                          {item.ai_generated && <span className="badge bg-violet-100 text-violet-600">AI</span>}
-                          {item.carried_from_id && <span className="badge bg-amber-100 text-amber-600">↩ carried</span>}
-                          <p className="text-sm font-medium">{item.title}</p>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {item.owner ? `Owner: ${item.owner}` : 'No owner'}
-                          {item.due_date && ` · Due: ${new Date(item.due_date).toLocaleDateString()}`}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setHistoryItemId(item.id)}
-                        className="text-xs text-gray-400 hover:text-blue-600"
-                      >History</button>
-                    </div>
+                      className="text-slate-400 hover:text-rose-600 text-xs px-2"
+                      title="Delete decision"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
@@ -527,15 +538,149 @@ export default function MeetingDetail() {
           </div>
         )}
 
-        {/* Catchup Brief */}
+        {/* ─── TAB 4: Action Items ─── */}
+        {tab === 'items' && (
+          <div className="space-y-4">
+            {/* Quick Add Form */}
+            <div className="card p-5 bg-gradient-to-r from-brand-50/50 to-indigo-50/30 border-brand-200">
+              <h3 className="font-bold text-slate-900 text-sm mb-3">Add Action Item</h3>
+              <div className="space-y-3">
+                <input
+                  className="input text-xs"
+                  placeholder="Action Item Title *"
+                  value={newItem.title}
+                  onChange={e => setNewItem(i => ({ ...i, title: e.target.value }))}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    className="input text-xs"
+                    placeholder="Owner (e.g. Priya Sharma)"
+                    value={newItem.owner}
+                    onChange={e => setNewItem(i => ({ ...i, owner: e.target.value }))}
+                  />
+                  <input
+                    className="input text-xs"
+                    type="date"
+                    value={newItem.due_date}
+                    onChange={e => setNewItem(i => ({ ...i, due_date: e.target.value }))}
+                  />
+                </div>
+                <button onClick={addItem} className="btn-primary text-xs w-full py-2">
+                  + Add Item to Agenda
+                </button>
+              </div>
+            </div>
+
+            {/* Items List */}
+            {meeting.action_items.length === 0 ? (
+              <EmptyState icon="✅" title="No action items yet" description="Add tasks manually or extract them via AI Recap." />
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {meeting.action_items.map(item => (
+                  <div key={item.id} className="card card-hover p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <StatusBadge status={item.status} />
+                        {item.ai_generated && <span className="badge bg-violet-50 text-violet-700 border-violet-200">✦ AI</span>}
+                        {item.carried_from_id && <span className="badge bg-amber-50 text-amber-700 border-amber-200">↩ Carried</span>}
+                        <h4 className="font-bold text-xs sm:text-sm text-slate-900 truncate">{item.title}</h4>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-3">
+                        <span>Owner: <strong className="text-slate-700 font-medium">{item.owner || 'Unassigned'}</strong></span>
+                        {item.due_date && <span>Due: {new Date(item.due_date).toLocaleDateString()}</span>}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setHistoryItemId(item.id)}
+                      className="btn-secondary text-xs py-1 px-3 self-end sm:self-auto"
+                    >
+                      Audit Trail
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── TAB 5: Participants ─── */}
+        {tab === 'participants' && (
+          <div className="space-y-4">
+            <div className="card p-4 space-y-3">
+              <h3 className="font-bold text-slate-800 text-sm">Add Participant</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  className="input text-xs"
+                  placeholder="Full Name *"
+                  value={newParticipant.name}
+                  onChange={e => setNewParticipant(p => ({ ...p, name: e.target.value }))}
+                />
+                <input
+                  className="input text-xs"
+                  placeholder="Email Address"
+                  value={newParticipant.email}
+                  onChange={e => setNewParticipant(p => ({ ...p, email: e.target.value }))}
+                />
+                <select
+                  className="input text-xs"
+                  value={newParticipant.attendance}
+                  onChange={e => setNewParticipant(p => ({ ...p, attendance: e.target.value }))}
+                >
+                  <option value="invited">Invited</option>
+                  <option value="attended">Attended</option>
+                  <option value="missed">Missed</option>
+                  <option value="no_response">No Response</option>
+                </select>
+              </div>
+              <button onClick={addParticipant} className="btn-primary text-xs">
+                + Add Participant
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {meeting.participants.map(p => (
+                <div key={p.id} className="card p-3.5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-600">
+                      {p.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{p.name}</p>
+                      {p.email && <p className="text-[11px] text-slate-400 truncate">{p.email}</p>}
+                    </div>
+                  </div>
+                  <select
+                    className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 bg-white font-medium text-slate-700"
+                    value={p.attendance}
+                    onChange={e => api.updateParticipant(meetingId, p.id, { attendance: e.target.value as any })
+                      .then(reload).catch(toastError)}
+                  >
+                    <option value="invited">Invited</option>
+                    <option value="attended">Attended</option>
+                    <option value="missed">Missed</option>
+                    <option value="no_response">No Response</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ─── TAB 6: Catchup Brief ─── */}
         {tab === 'brief' && (
           <div className="space-y-4">
-            <div>
-              <label className="label">Generate brief for person (name of someone who missed the meeting)</label>
-              <div className="flex gap-2">
+            <div className="card p-5 space-y-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Personalized Catchup Brief</h3>
+                <p className="text-xs text-slate-500">
+                  Generate a high-density, 150-word summary tailored for someone who missed the meeting or is taking over a project.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
                 <input
-                  className="input flex-1"
-                  placeholder="Enter participant name..."
+                  className="input text-xs flex-1"
+                  placeholder="Select or enter recipient name..."
                   value={briefPerson}
                   onChange={e => setBriefPerson(e.target.value)}
                   list="participant-names"
@@ -543,78 +688,75 @@ export default function MeetingDetail() {
                 <datalist id="participant-names">
                   {meeting.participants.map(p => <option key={p.id} value={p.name} />)}
                 </datalist>
-                <LoadingButton loading={briefLoading} onClick={handleGetBrief}>
-                  ✦ Generate Brief
+                <LoadingButton loading={briefLoading} onClick={handleGetBrief} className="btn-ai text-xs px-4">
+                  ✦ Generate Catchup Brief
                 </LoadingButton>
               </div>
             </div>
+
             {briefText && (
-              <div className="card bg-gray-50 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium">Catchup Brief for {briefPerson}</h3>
+              <div className="card bg-gradient-to-br from-indigo-50/40 via-white to-slate-50 border-indigo-100 p-6 space-y-4 shadow-sm animate-fade-in-up">
+                <div className="flex items-center justify-between pb-3 border-b border-indigo-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📬</span>
+                    <h4 className="font-bold text-slate-900 text-sm">Brief for {briefPerson}</h4>
+                  </div>
                   <AiBadge mode={briefMode} />
                 </div>
-                <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{briefText}</pre>
-                <button
-                  onClick={() => navigator.clipboard.writeText(briefText)}
-                  className="text-sm text-blue-600 hover:underline"
-                >📋 Copy to clipboard</button>
+                <div className="p-4 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+                  <pre className="whitespace-pre-wrap text-xs sm:text-sm text-slate-700 font-sans leading-relaxed">
+                    {briefText}
+                  </pre>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(briefText)
+                      setCopiedBrief(true)
+                      setTimeout(() => setCopiedBrief(false), 2000)
+                    }}
+                    className="btn-secondary text-xs"
+                  >
+                    {copiedBrief ? '✓ Copied to Clipboard' : '📋 Copy Brief Text'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Carry Forward */}
+        {/* ─── TAB 7: Carry Forward ─── */}
         {tab === 'carry' && (
-          <div className="space-y-4">
-            <div className="card bg-amber-50 border-amber-200">
-              <h3 className="font-semibold text-amber-800 mb-2">Carry Open Items Forward</h3>
-              <p className="text-sm text-amber-700 mb-4">
-                All open and in-progress items from this meeting will be moved to a new meeting,
-                preserving their history and origin.
-              </p>
-              <LoadingButton loading={carryLoading} onClick={handleCarryForward}>
-                ↩ Carry Forward to New Meeting
-              </LoadingButton>
-              {carryResult && (
-                <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-700">
-                    ✓ Carried {carryResult.carried_count} items to{' '}
-                    <a
-                      href={`/meetings/${carryResult.next_meeting_id}`}
-                      className="text-blue-600 hover:underline font-medium"
-                    >
-                      meeting #{carryResult.next_meeting_id}
-                    </a>
+          <div className="space-y-6">
+            <div className="card p-6 bg-gradient-to-r from-amber-50/60 to-orange-50/30 border-amber-200 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-amber-500/20">
+                  ↩
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Carry Open Items Forward</h3>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Automatically migrates all open and in-progress action items into the next meeting agenda with audit preservation.
                   </p>
                 </div>
-              )}
-            </div>
-
-            {/* Auto-agenda for next meeting */}
-            <div className="card">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold">Auto-Agenda for Next Meeting</h3>
-                <AiBadge mode={agendaMode || 'ai'} />
               </div>
-              <p className="text-sm text-gray-500 mb-3">
-                AI drafts an agenda from carried items, overdue items, and unresolved decisions.
-              </p>
-              <LoadingButton loading={agendaLoading} onClick={handleAutoAgenda}>
-                ✦ Draft Auto-Agenda
+
+              <LoadingButton loading={carryLoading} onClick={handleCarryForward} className="text-xs">
+                ↩ Execute Carry Forward
               </LoadingButton>
-              {agendaItems.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {agendaItems.map((item: any) => (
-                    <div key={item.order} className="flex gap-3 p-3 bg-blue-50 rounded-lg">
-                      <span className="text-blue-600 font-bold">{item.order}.</span>
-                      <div>
-                        <p className="font-medium text-sm">{item.title}</p>
-                        <p className="text-xs text-gray-500">{item.description}</p>
-                        <p className="text-xs text-blue-500">⏱ {item.time_minutes} min</p>
-                      </div>
-                    </div>
-                  ))}
+
+              {carryResult && (
+                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 space-y-1 animate-fade-in">
+                  <p className="font-bold">✓ Successfully carried forward {carryResult.carried_count} items!</p>
+                  <p>
+                    Target meeting created:{' '}
+                    <a
+                      href={`/meetings/${carryResult.next_meeting_id}`}
+                      className="text-brand-600 font-bold hover:underline"
+                    >
+                      View Meeting #{carryResult.next_meeting_id} →
+                    </a>
+                  </p>
                 </div>
               )}
             </div>
@@ -622,7 +764,7 @@ export default function MeetingDetail() {
         )}
       </div>
 
-      {/* History Drawer */}
+      {/* Item Audit Trail Drawer */}
       {historyItem && (
         <HistoryDrawer
           events={historyItem.events}
@@ -632,4 +774,3 @@ export default function MeetingDetail() {
     </div>
   )
 }
-
